@@ -1,0 +1,38 @@
+{
+  "name": "matchcv",
+  "version": "1.0.0",
+  "description": "MatchCV - Find nearby people with similar hobbies",
+  "private": true,
+  "scripts": {
+    "dev:mobile": "cd mobile && npm start",
+    "dev:backend": "cd backend && npm run dev",
+    "build:mobile": "cd mobile && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "install:all": "npm install && cd mobile && npm install && cd ../backend && npm install",
+    "clean": "rm -rf node_modules mobile/node_modules backend/node_modules",
+    "test": "npm run test:mobile && npm run test:backend",
+    "test:mobile": "cd mobile && npm test",
+    "test:backend": "cd backend && npm test"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "nodejs",
+    "postgresql",
+    "location-based",
+    "social",
+    "hobbies"
+  ],
+  "author": "Rom Green",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.19.4",
+    "npm": ">=10.0.0"
+  }
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "1",
+    "name": "Photography",
+    "category": "Arts"
+  },
+  {
+    "id": "2",
+    "name": "Cooking",
+    "category": "Lifestyle"
+  },
+  {
+    "id": "3",
+    "name": "Hiking",
+    "category": "Sports"
+  },
+  {
+    "id": "4",
+    "name": "Reading",
+    "category": "Lifestyle"
+  },
+  {
+    "id": "5",
+    "name": "Gaming",
+    "category": "Entertainment"
+  },
+  {
+    "id": "6",
+    "name": "Music",
+    "category": "Arts"
+  },
+  {
+    "id": "7",
+    "name": "Travel",
+    "category": "Lifestyle"
+  },
+  {
+    "id": "8",
+    "name": "Fitness",
+    "category": "Sports"
+  },
+  {
+    "id": "9",
+    "name": "Painting",
+    "category": "Arts"
+  },
+  {
+    "id": "10",
+    "name": "Dancing",
+    "category": "Arts"
+  }
+]

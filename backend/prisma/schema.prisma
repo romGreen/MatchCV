@@ -1,0 +1,131 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  profile Profile?
+
+  @@map("users")
+}
+
+model Profile {
+  id              String         @id @default(cuid())
+  userId          String         @unique
+  displayName     String
+  bio             String
+  avatarUrl       String?
+  visibilityLevel VisibilityLevel @default(NEIGHBORHOOD)
+  lastActive      DateTime       @default(now())
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Location (stored as approximate for privacy)
+  latitude  Float?
+  longitude Float?
+  accuracy  Int? // in meters
+  
+  // Match preferences
+  matchRadius Int? @default(10) // in kilometers
+
+  // Relations
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hobbies   UserHobby[]
+  matches   Match[]    @relation("ProfileMatches")
+  matches2  Match[]    @relation("ProfileMatches2")
+  messages  Message[]
+
+  @@map("profiles")
+}
+
+model Hobby {
+  id       String @id @default(cuid())
+  name     String @unique
+  category String
+  createdAt DateTime @default(now())
+
+  // Relations
+  users UserHobby[]
+
+  @@map("hobbies")
+}
+
+model UserHobby {
+  id      String @id @default(cuid())
+  userId  String
+  hobbyId String
+
+  // Relations
+  user  Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hobby Hobby  @relation(fields: [hobbyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, hobbyId])
+  @@map("user_hobbies")
+}
+
+model Match {
+  id          String   @id @default(cuid())
+  profile1Id  String
+  profile2Id  String
+  score       Float    // Match score (0-100)
+  distance    Float    // Distance in meters
+  isMatched   Boolean  @default(false) // Both users liked each other
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  profile1 Profile @relation("ProfileMatches", fields: [profile1Id], references: [id], onDelete: Cascade)
+  profile2 Profile @relation("ProfileMatches2", fields: [profile2Id], references: [id], onDelete: Cascade)
+  chat     Chat?
+
+  @@unique([profile1Id, profile2Id])
+  @@map("matches")
+}
+
+model Chat {
+  id        String   @id @default(cuid())
+  matchId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  match Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@map("chats")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  chatId    String
+  senderId  String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  chat   Chat   @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender Profile @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+enum VisibilityLevel {
+  PRECISE
+  NEIGHBORHOOD
+  HIDDEN
+}

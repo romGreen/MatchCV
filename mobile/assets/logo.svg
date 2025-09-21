@@ -1,0 +1,26 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Magnet base -->
+  <rect x="20" y="20" width="80" height="80" rx="40" fill="url(#gradient1)" stroke="#fff" stroke-width="2"/>
+  
+  <!-- Magnet poles -->
+  <circle cx="40" cy="40" r="12" fill="#FF6B6B"/>
+  <circle cx="80" cy="80" r="12" fill="#4ECDC4"/>
+  
+  <!-- Connection lines -->
+  <path d="M40 40 Q60 60 80 80" stroke="#FFD93D" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M40 40 Q60 60 80 80" stroke="#FF6B6B" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.6"/>
+  
+  <!-- Magnetic field lines -->
+  <circle cx="40" cy="40" r="20" stroke="#FF6B6B" stroke-width="1" fill="none" opacity="0.3"/>
+  <circle cx="80" cy="80" r="20" stroke="#4ECDC4" stroke-width="1" fill="none" opacity="0.3"/>
+  
+  <!-- App name -->
+  <text x="60" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#2C3E50">MatchCV</text>
+  
+  <defs>
+    <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+</svg>

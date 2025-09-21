@@ -1,0 +1,17 @@
+{
+  "name": "@matchcv/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for MatchCV",
+  "main": "index.ts",
+  "types": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["types", "shared", "matchcv"],
+  "author": "Rom Green",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
