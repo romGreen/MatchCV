@@ -1,74 +1,55 @@
+// Re-export all types
+export * from './api';
+export * from './navigation';
 
-export interface GeoPoint {
-  latitude: number;
-  longitude: number;
-}
-
-export interface HobbyTag {
-  id: string;
-  name: string;
-  category?: string;
-}
-
-export type VisibilityLevel = 'precise' | 'neighborhood' | 'hidden';
-
-export interface UserProfile {
-  id: string;
-  displayName: string;
-  bio: string;
-  avatar?: string;
-  hobbies: HobbyTag[];
-  location?: GeoPoint;
-  visibility: VisibilityLevel;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface MatchScore {
-  sharedHobbies: number;
-  totalHobbies: number;
-  distance: number; // in kilometers
-  score: number; // 0-100
-}
-
-export interface NearbyUser extends UserProfile {
-  matchScore: MatchScore;
-}
-
-export interface SessionState {
-  currentUser?: UserProfile;
-  isLocationEnabled: boolean;
-  locationPermission: 'granted' | 'denied' | 'not-requested';
-}
-
-export interface LocationState {
-  currentLocation?: GeoPoint;
-  approximateLocation?: GeoPoint; // rounded to grid
-  isLocationEnabled: boolean;
-}
-
-export interface AppState {
-  session: SessionState;
-  location: LocationState;
-}
+// Common utility types
+export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};
 
 // Form types
-export interface ProfileFormData {
-  displayName: string;
-  bio: string;
-  avatar?: string;
-  hobbies: string[];
-  visibility: VisibilityLevel;
+export interface FormField<T = any> {
+  value: T;
+  error?: string;
+  touched: boolean;
+  required?: boolean;
 }
 
-// API Response types
-export interface ApiResponse<T> {
-  data: T;
-  success: boolean;
-  message?: string;
+export interface FormState<T = Record<string, any>> {
+  values: T;
+  errors: Partial<Record<keyof T, string>>;
+  touched: Partial<Record<keyof T, boolean>>;
+  isValid: boolean;
+  isSubmitting: boolean;
 }
 
-export interface NearbyUsersResponse {
-  users: NearbyUser[];
+// Component prop types
+export interface BaseComponentProps {
+  style?: any;
+  testID?: string;
+}
+
+export interface LoadingProps extends BaseComponentProps {
+  loading?: boolean;
+  text?: string;
+}
+
+export interface ErrorProps extends BaseComponentProps {
+  error?: string;
+  onRetry?: () => void;
+}
+
+// State management types
+export interface AsyncState<T> {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface PaginatedState<T> extends AsyncState<T[]> {
+  hasMore: boolean;
+  page: number;
   total: number;
 }

@@ -22,9 +22,15 @@ export default function LoginScreen() {
       const response = await authService.login(loginData);
 
       if (response.success) {
-        Alert.alert('Success', 'Logged in successfully!', [
-          { text: 'OK', onPress: () => router.replace('/') }
-        ]);
+        // Check if user has a profile
+        const user = await authService.getCurrentUser();
+        if (user?.profile) {
+          // User has profile, go to discover
+          router.replace('/(tabs)/discover');
+        } else {
+          // User needs to create profile
+          router.replace('/profile/edit');
+        }
       } else {
         Alert.alert('Error', response.error || 'Login failed');
       }

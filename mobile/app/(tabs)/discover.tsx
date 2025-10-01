@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, Image, Alert } from 'react-native';
-import { Text, Card, Button, Chip, FAB, SegmentedButtons, ActivityIndicator } from 'react-native-paper';
+import { Text, Card, Button, Chip, FAB, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker } from 'react-native-maps';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '@/lib/api';
 import { authService } from '@/lib/auth';
 import { NearbyUser, AuthUser } from '@matchcv/shared';
-import { locationService } from '@/lib/location';
 
 export default function DiscoverScreen() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [isLocationEnabled, setIsLocationEnabled] = useState(false);
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('list');
   const [selectedUser, setSelectedUser] = useState<NearbyUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
+
 
   // Load current user
   useEffect(() => {
@@ -35,48 +32,41 @@ export default function DiscoverScreen() {
   }, []);
 
   // Fetch nearby users
-  const { data: nearbyUsersData, isLoading, refetch } = useQuery({
-    queryKey: ['nearby-users', currentUser?.id],
+  const { data: nearbyUsersData, isLoading, error, refetch } = useQuery({
+    queryKey: ['nearby-users', currentUser?.id, currentUser?.profile?.matchRadius],
     queryFn: async () => {
       if (!currentUser?.profile) return null;
       
-      // Try to get real location first
-      let userLocation = { latitude: 31.9293, longitude: 34.7987 }; // Fallback to Nes Ziona
-      
-      try {
-        const hasPermission = await locationService.requestLocationPermission();
-        if (hasPermission) {
-          const realLocation = await locationService.getCurrentLocation();
-          if (realLocation) {
-            userLocation = realLocation;
-            setCurrentLocation(realLocation); // Store in state for map
-            console.log('Using real GPS location:', userLocation);
-            
-            // Save real location to backend
-            await apiService.updateLocation(userLocation.latitude, userLocation.longitude);
-          }
-        }
-      } catch (error) {
-        console.log('Could not get real location, using fallback:', error);
-      }
+      // No need to track exact coordinates - just use the discovery API
+      // which will handle location-based matching on the backend
       
       // Convert AuthUser to UserProfile format
       const userProfile = {
         id: currentUser.id,
         displayName: currentUser.profile.displayName,
         bio: currentUser.profile.bio,
-        avatarUrl: currentUser.profile.avatarUrl,
+        avatarUrl: currentUser.profile.photos?.[0]?.photoUrl,
         hobbies: currentUser.profile.hobbies,
-        location: userLocation,
-        visibilityLevel: currentUser.profile.visibilityLevel,
+        location: currentUser.profile.location, // Use the location from the user's profile
+        useLocation: currentUser.profile.useLocation ?? true,
         matchRadius: currentUser.profile.matchRadius || 10,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-      return apiService.getNearbyUsers(userProfile, currentUser.profile.matchRadius || 10);
+      // Call the discovery API with the user's actual match radius
+      return await apiService.getNearbyUsers(userProfile, currentUser.profile.matchRadius || 10);
     },
     enabled: !!currentUser?.profile,
   });
+
+  // Refresh discovery data when screen comes into focus (e.g., after profile edit)
+  useFocusEffect(
+    React.useCallback(() => {
+      if (currentUser?.profile) {
+        refetch();
+      }
+    }, [currentUser?.profile, refetch])
+  );
 
   // Location permission check - simplified for now
   useEffect(() => {
@@ -92,112 +82,46 @@ export default function DiscoverScreen() {
 
   const renderUserCard = ({ item }: { item: NearbyUser }) => (
     <Card style={styles.userCard} onPress={() => handleUserPress(item)}>
-      <Card.Content style={styles.cardContent}>
+      <View style={styles.cardContentWrapper}>
+        <Card.Content style={styles.cardContent}>
         {/* Match score badge */}
         <View style={styles.matchBadge}>
           <Text variant="titleMedium" style={styles.matchScore}>
-            {item.matchScore.score}%
+            {item.matchScore?.score || 0}%
           </Text>
         </View>
         
         <View style={styles.userInfo}>
           <View style={styles.avatarContainer}>
-            <Image source={{ uri: item.profile.avatarUrl || 'https://i.pravatar.cc/150' }} style={styles.avatar} />
-            <View style={styles.onlineIndicator} />
+            {item.profile.photos?.[0]?.photoUrl ? (
+              <Image source={{ uri: item.profile.photos[0].photoUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.noPhotoAvatar}>
+                <Text style={styles.noPhotoAvatarText}>No Photo</Text>
+              </View>
+            )}
           </View>
           <View style={styles.userDetails}>
             <Text variant="titleLarge" style={styles.userName}>
               {item.profile.displayName}
             </Text>
-            <Text variant="bodyMedium" style={styles.bio} numberOfLines={2}>
-              {item.profile.bio}
-            </Text>
             
-            {/* Distance and shared hobbies */}
+            {/* Shared hobbies count */}
             <View style={styles.connectionInfo}>
-              <View style={styles.distanceInfo}>
-                <Text style={styles.distanceIcon}>📍</Text>
-                <Text variant="bodySmall" style={styles.distance}>
-                  {locationService.formatDistance(item.matchScore.distance)}
-                </Text>
-              </View>
               <View style={styles.sharedInfo}>
-                <Text style={styles.sharedIcon}>🧲</Text>
-                <Text variant="bodySmall" style={styles.sharedHobbies}>
-                  {item.matchScore.sharedHobbies.length} shared
+                
+                <Text variant="titleLarge" style={styles.sharedHobbies}>
+                  {item.matchScore?.sharedHobbies?.length || 0} shared hobbies
                 </Text>
               </View>
-            </View>
-            
-            {/* Hobbies */}
-            <View style={styles.hobbiesContainer}>
-              {item.profile.hobbies.slice(0, 3).map((hobby) => (
-                <View key={hobby.id} style={styles.hobbyTag}>
-                  <Text style={styles.hobbyText}>{hobby.name}</Text>
-                </View>
-              ))}
-              {item.profile.hobbies.length > 3 && (
-                <View style={styles.hobbyTag}>
-                  <Text style={styles.hobbyText}>+{item.profile.hobbies.length - 3}</Text>
-                </View>
-              )}
             </View>
           </View>
         </View>
-        
-        {/* Connection button */}
-        <View style={styles.connectionButton}>
-          <Text style={styles.connectionText}>Connect</Text>
-        </View>
-      </Card.Content>
+        </Card.Content>
+      </View>
     </Card>
   );
 
-  const renderMapView = () => {
-    // Use the current location from state, or fallback to Nes Ziona
-    const userLocation = currentLocation || { latitude: 31.9293, longitude: 34.7987 };
-    
-    if (!userLocation) {
-      return (
-        <View style={styles.emptyState}>
-          <Text variant="bodyLarge">Location not available</Text>
-          <Text variant="bodyMedium" style={styles.emptyStateText}>
-            Enable location to see matches on the map
-          </Text>
-        </View>
-      );
-    }
-
-    return (
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: userLocation.latitude,
-          longitude: userLocation.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        }}
-      >
-        {/* Current user marker */}
-        <Marker
-          coordinate={userLocation}
-          title="You"
-          pinColor="blue"
-        />
-        
-        {/* Nearby users markers */}
-        {nearbyUsersData?.data?.users.map((user) => (
-          <Marker
-            key={user.profile.id}
-            coordinate={user.profile.location!}
-            title={user.profile.displayName}
-            description={`${user.matchScore.score}% match`}
-            onPress={() => setSelectedUser(user)}
-          />
-        ))}
-      </MapView>
-    );
-  };
 
   const renderListView = () => {
     if (isLoading) {
@@ -205,6 +129,38 @@ export default function DiscoverScreen() {
         <View style={styles.loading}>
           <ActivityIndicator size="large" />
           <Text>Finding nearby matches...</Text>
+        </View>
+      );
+    }
+
+    // Handle location error
+    if (error) {
+      const errorMessage = error.message || 'Failed to fetch nearby users';
+      const isLocationError = errorMessage.includes('location not available');
+      
+      return (
+        <View style={styles.emptyState}>
+          <Text variant="titleLarge">Location Required</Text>
+          <Text variant="bodyMedium" style={styles.emptyStateText}>
+            {isLocationError 
+              ? 'Please update your location in profile settings to discover nearby users.'
+              : 'Unable to find nearby users. Please try again.'
+            }
+          </Text>
+          <Button
+            mode="contained"
+            onPress={() => router.push('/profile/edit')}
+            style={styles.emptyStateButton}
+          >
+            Update Location
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={() => refetch()}
+            style={[styles.emptyStateButton, { marginTop: 8 }]}
+          >
+            Try Again
+          </Button>
         </View>
       );
     }
@@ -240,7 +196,7 @@ export default function DiscoverScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right']}>
         <View style={styles.loading}>
           <ActivityIndicator size="large" />
           <Text>Loading...</Text>
@@ -251,7 +207,7 @@ export default function DiscoverScreen() {
 
   if (!currentUser) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['left', 'right']}>
         <View style={styles.emptyState}>
           <Text variant="titleLarge">Create your profile first</Text>
           <Text variant="bodyMedium" style={styles.emptyStateText}>
@@ -275,19 +231,9 @@ export default function DiscoverScreen() {
         <Text variant="headlineSmall" style={styles.title}>
           Discover Matches
         </Text>
-        <SegmentedButtons
-          value={viewMode}
-          onValueChange={(value) => setViewMode(value as 'map' | 'list')}
-          buttons={[
-            { value: 'list', label: 'List' },
-            { value: 'map', label: 'Map' },
-          ]}
-          style={styles.segmentedButtons}
-        />
       </View>
-
       <View style={styles.content}>
-        {viewMode === 'map' ? renderMapView() : renderListView()}
+        {renderListView()}
       </View>
 
       <FAB
@@ -307,7 +253,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingTop: 50,
+    
     paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
@@ -316,6 +263,7 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: 'bold',
     marginBottom: 16,
+    textAlign: 'center',
   },
   segmentedButtons: {
     alignSelf: 'flex-start',
@@ -326,6 +274,27 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
+  webMapFallback: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: '#f0f0f0',
+  },
+  webMapTitle: {
+    marginBottom: 16,
+    color: '#6200ea',
+    fontWeight: 'bold',
+  },
+  webMapText: {
+    textAlign: 'center',
+    marginBottom: 24,
+    color: '#666',
+    lineHeight: 24,
+  },
+  switchToListButton: {
+    borderRadius: 8,
+  },
   listContent: {
     paddingHorizontal: 16,
     paddingTop: 16,
@@ -334,7 +303,6 @@ const styles = StyleSheet.create({
   userCard: {
     marginBottom: 16,
     borderRadius: 15,
-    overflow: 'hidden',
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -342,11 +310,30 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     backgroundColor: '#fff',
   },
+  cardContentWrapper: {
+    borderRadius: 15,
+    overflow: 'hidden',
+  },
   cardContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 10,
     position: 'relative',
+  },
+  matchBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#6200ea',
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    zIndex: 1,
+  },
+  matchScore: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
   userInfo: {
     flex: 1,
@@ -364,17 +351,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#6200ea',
   },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 15,
-    height: 15,
-    borderRadius: 7.5,
-    backgroundColor: '#4CAF50',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
   userDetails: {
     flex: 1,
   },
@@ -382,11 +358,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 4,
-  },
-  bio: {
-    color: '#666',
-    fontSize: 13,
-    marginBottom: 8,
   },
   connectionInfo: {
     flexDirection: 'row',
@@ -416,23 +387,9 @@ const styles = StyleSheet.create({
   },
   sharedHobbies: {
     color: '#666',
-    fontSize: 12,
-  },
-  hobbiesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    fontSize: 15,
+    fontWeight: '600',
     marginTop: 5,
-    gap: 6,
-  },
-  hobbyTag: {
-    backgroundColor: '#e0e0e0',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  hobbyText: {
-    fontSize: 12,
-    color: '#555',
   },
   connectionButton: {
     backgroundColor: '#6200ea',
@@ -445,21 +402,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 14,
-  },
-  matchBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#6200ea',
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    zIndex: 1,
-  },
-  matchScore: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
   loading: {
     flex: 1,
@@ -485,5 +427,22 @@ const styles = StyleSheet.create({
     margin: 16,
     right: 0,
     bottom: 0,
+  },
+  noPhotoAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderStyle: 'dashed',
+  },
+  noPhotoAvatarText: {
+    fontSize: 10,
+    color: '#999',
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

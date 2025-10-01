@@ -1,27 +1,11 @@
 import { Router } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
+import { authenticateToken } from '../middleware/auth';
+import { DiscoveryController } from '../controllers/discoveryController';
 
 const router = Router();
+const discoveryController = new DiscoveryController();
 
-// Placeholder discovery routes - will be implemented with Prisma
-router.get('/nearby', asyncHandler(async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      message: 'Discovery endpoints not yet implemented',
-      code: 'NOT_IMPLEMENTED'
-    }
-  });
-}));
-
-router.get('/matches', asyncHandler(async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      message: 'Discovery endpoints not yet implemented',
-      code: 'NOT_IMPLEMENTED'
-    }
-  });
-}));
+// Discovery routes using controllers
+router.get('/nearby', authenticateToken, (req, res) => discoveryController.getNearbyUsers(req, res));
 
 export { router as discoveryRoutes };

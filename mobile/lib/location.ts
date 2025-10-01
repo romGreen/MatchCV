@@ -1,8 +1,11 @@
 import * as Location from 'expo-location';
+import { Alert, Linking } from 'react-native';
 import { GeoPoint } from '@matchcv/shared';
 
 export class LocationService {
   private static instance: LocationService;
+  private lastKnownLocation: GeoPoint | null = null;
+  private locationWatchSubscription: Location.LocationSubscription | null = null;
   
   public static getInstance(): LocationService {
     if (!LocationService.instance) {
@@ -12,38 +15,97 @@ export class LocationService {
   }
 
   /**
-   * Request location permission and get current location
+   * Request location permission with better error handling
    */
   async requestLocationPermission(): Promise<boolean> {
     try {
+      // Check if permission is already granted
+      const { status: currentStatus } = await Location.getForegroundPermissionsAsync();
+      if (currentStatus === 'granted') {
+        return true;
+      }
+
+      // Request permission
       const { status } = await Location.requestForegroundPermissionsAsync();
-      return status === 'granted';
+      
+      if (status === 'granted') {
+        return true;
+      } else if (status === 'denied') {
+        Alert.alert(
+          'Location Permission Denied',
+          'Location access is required to find nearby matches. You can enable it in your device settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return false;
+      } else {
+        Alert.alert(
+          'Location Permission Required',
+          'Please grant location permission to use this feature.',
+          [{ text: 'OK' }]
+        );
+        return false;
+      }
     } catch (error) {
       console.error('Error requesting location permission:', error);
+      Alert.alert('Error', 'Failed to request location permission. Please try again.');
       return false;
     }
   }
 
   /**
-   * Get current location with error handling
+   * Get current location with improved accuracy and caching
    */
   async getCurrentLocation(): Promise<GeoPoint | null> {
     try {
       const hasPermission = await this.requestLocationPermission();
+      
       if (!hasPermission) {
-        throw new Error('Location permission denied');
+        return null;
+      }
+
+      // Check if location services are enabled
+      const isEnabled = await Location.hasServicesEnabledAsync();
+      
+      if (!isEnabled) {
+        Alert.alert(
+          'Location Services Disabled',
+          'Please enable location services in your device settings to find nearby matches.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return null;
       }
 
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
 
-      return {
+      const coords = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
       };
+
+      // Cache the location
+      this.lastKnownLocation = coords;
+      return coords;
     } catch (error) {
       console.error('Error getting current location:', error);
+      
+      // Return cached location if available
+      if (this.lastKnownLocation) {
+        return this.lastKnownLocation;
+      }
+
+      Alert.alert(
+        'Location Error',
+        'Unable to get your current location. Please check your location settings and try again.',
+        [{ text: 'OK' }]
+      );
       return null;
     }
   }
@@ -102,10 +164,121 @@ export class LocationService {
   }
 
   /**
+   * Start watching location changes
+   */
+  async startLocationWatch(
+    callback: (location: GeoPoint) => void
+  ): Promise<boolean> {
+    try {
+      const hasPermission = await this.requestLocationPermission();
+      if (!hasPermission) {
+        return false;
+      }
+
+      // Stop any existing watch
+      if (this.locationWatchSubscription) {
+        this.locationWatchSubscription.remove();
+      }
+
+      this.locationWatchSubscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 30000, // Update every 30 seconds
+          distanceInterval: 100, // Update every 100 meters
+        },
+        (location) => {
+          const coords = {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          };
+          this.lastKnownLocation = coords;
+          callback(coords);
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error starting location watch:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Stop watching location changes
+   */
+  stopLocationWatch(): void {
+    if (this.locationWatchSubscription) {
+      this.locationWatchSubscription.remove();
+      this.locationWatchSubscription = null;
+    }
+  }
+
+  /**
+   * Get last known location
+   */
+  getLastKnownLocation(): GeoPoint | null {
+    return this.lastKnownLocation;
+  }
+
+  /**
+   * Get city and country from coordinates using reverse geocoding
+   */
+  async getCityAndCountryFromLocation(location: GeoPoint): Promise<{ city: string; country: string } | null> {
+    try {
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+
+      if (reverseGeocode.length > 0) {
+        const address = reverseGeocode[0];
+        const city = address.city || address.subregion || address.region || 'Unknown City';
+        const country = address.country || 'Unknown Country';
+        
+        return { city, country };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting city/country from location:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get current location and automatically detect city/country
+   */
+  async getCurrentLocationWithCity(): Promise<{ location: GeoPoint; city: string; country: string } | null> {
+    try {
+      const location = await this.getCurrentLocation();
+      
+      if (!location) {
+        return null;
+      }
+
+      const cityCountry = await this.getCityAndCountryFromLocation(location);
+      
+      if (!cityCountry) {
+        return null;
+      }
+
+      const result = {
+        location,
+        city: cityCountry.city,
+        country: cityCountry.country,
+      };
+      return result;
+    } catch (error) {
+      console.error('Error getting location with city:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get location with appropriate privacy level
    */
-  async getLocationForVisibility(visibility: 'precise' | 'neighborhood' | 'hidden'): Promise<GeoPoint | null> {
-    if (visibility === 'hidden') {
+  async getLocationForUseLocation(useLocation: boolean): Promise<GeoPoint | null> {
+    if (!useLocation) {
       return null;
     }
 
@@ -114,11 +287,8 @@ export class LocationService {
       return null;
     }
 
-    if (visibility === 'neighborhood') {
-      return this.roundToApproximateGrid(location);
-    }
-
-    return location; // precise
+    // Always return precise location for GPS users
+    return location;
   }
 }
 

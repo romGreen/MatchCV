@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserProfile, VisibilityLevel, GeoPoint } from '@matchcv/shared';
+import { UserProfile, Visibility, GeoPoint } from '@matchcv/shared';
 import { locationService } from '@/lib/location';
 
 interface SessionState {
@@ -78,13 +78,13 @@ export const useSessionStore = create<SessionState>()(
               approximateLocation,
             });
 
-            // Update user's location based on visibility setting
-            const locationForVisibility = await locationService.getLocationForVisibility(
-              currentUser.visibility
+            // Update user's location based on useLocation setting
+            const locationForUseLocation = await locationService.getLocationForUseLocation(
+              currentUser.profile?.useLocation ?? true
             );
             
-            if (locationForVisibility) {
-              get().updateUserProfile({ location: locationForVisibility });
+            if (locationForUseLocation) {
+              get().updateUserProfile({ location: locationForUseLocation });
             }
           }
         } catch (error) {

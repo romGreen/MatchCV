@@ -1,31 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from './prisma';
+import { AuthUser } from '../types/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this-in-production';
 const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
 
-export interface AuthUser {
-  id: string;
-  email: string;
-  profile?: {
-    id: string;
-    displayName: string;
-    bio: string;
-    avatarUrl?: string;
-    visibilityLevel: string;
-    hobbies: Array<{
-      id: string;
-      name: string;
-      category: string;
-    }>;
-    location: {
-      latitude: number;
-      longitude: number;
-    };
-    matchRadius: number;
-  };
-}
 
 export interface LoginRequest {
   email: string;
@@ -38,7 +18,9 @@ export interface RegisterRequest {
   displayName: string;
   bio?: string;
   hobbies?: string[];
-  visibilityLevel?: string;
+  useLocation?: boolean;
+  country: string;
+  city: string;
 }
 
 export interface AuthResponse {
@@ -107,6 +89,7 @@ export async function getUserByEmail(email: string) {
  */
 export async function getUserById(id: string) {
   console.log('getUserById - Searching for user with ID:', id);
+  
   const user = await prisma.user.findUnique({
     where: { id },
     include: {
@@ -121,10 +104,17 @@ export async function getUserById(id: string) {
       }
     }
   });
-  console.log('getUserById - User found:', user ? 'Yes' : 'No');
+  
+  console.log('getUserById - User found:', !!user);
   if (user) {
     console.log('getUserById - User email:', user.email);
+    console.log('getUserById - Profile exists:', !!user.profile);
+    if (user.profile) {
+      console.log('getUserById - Profile age:', (user.profile as any).age);
+      console.log('getUserById - Profile fields:', Object.keys(user.profile));
+    }
   }
+  
   return user;
 }
 
@@ -164,9 +154,11 @@ export async function createUserWithProfile(data: RegisterRequest) {
         create: {
           displayName: data.displayName,
           bio: data.bio || '',
-          visibilityLevel: (data.visibilityLevel || 'NEIGHBORHOOD').toUpperCase() as any,
+          useLocation: data.useLocation ?? true,
+          country: data.country,
+          city: data.city,
           ...hobbyConnections
-        }
+        } as any
       }
     },
     include: {
@@ -183,28 +175,3 @@ export async function createUserWithProfile(data: RegisterRequest) {
   });
 }
 
-/**
- * Convert database user to AuthUser format
- */
-export function formatAuthUser(user: any): AuthUser {
-  return {
-    id: user.id,
-    email: user.email,
-    profile: user.profile ? {
-      id: user.profile.id,
-      displayName: user.profile.displayName,
-      bio: user.profile.bio,
-      avatarUrl: user.profile.avatarUrl,
-      visibilityLevel: user.profile.visibilityLevel,
-      hobbies: user.profile.hobbies?.map((uh: any) => ({
-        id: uh.hobby.id,
-        name: uh.hobby.name,
-        category: uh.hobby.category
-      })) || [],
-      location: user.profile.latitude && user.profile.longitude 
-        ? { latitude: user.profile.latitude, longitude: user.profile.longitude }
-        : { latitude: 31.9293, longitude: 34.7987 }, // Fallback to Nes Ziona, Israel
-      matchRadius: user.profile.matchRadius || 10
-    } : undefined
-  };
-}

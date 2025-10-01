@@ -33,10 +33,13 @@
     "react-dom": "^19.1.0",
     "react-hook-form": "^7.48.2",
     "react-native": "0.81.4",
+    "react-native-country-picker-modal": "^2.0.0",
     "react-native-maps": "1.20.1",
     "react-native-paper": "^5.11.6",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-web": "^0.21.0",
+    "socket.io-client": "^4.8.1",
     "zod": "^3.22.4",
     "zustand": "^4.4.7"
   },

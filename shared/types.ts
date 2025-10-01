@@ -3,11 +3,27 @@ export interface UserProfile {
   id: string;
   displayName: string;
   bio: string;
-  avatarUrl?: string;
+  photos?: UserPhoto[];
   hobbies: HobbyTag[];
   location: GeoPoint;
-  visibilityLevel: VisibilityLevel;
+  useLocation: boolean;
   matchRadius?: number;
+  country?: string;
+  city?: string;
+  
+  // Optional profile information
+  age?: number;
+  job?: string;
+  company?: string;
+  education?: string;
+  university?: string;
+  relationshipStatus?: string;
+  lookingFor?: string;
+  interests?: string;
+  languages?: string;
+  height?: number;
+  lifestyle?: string;
+  
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,6 +32,14 @@ export interface HobbyTag {
   id: string;
   name: string;
   category: string;
+}
+
+export interface UserPhoto {
+  id: string;
+  photoUrl: string;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface GeoPoint {
@@ -44,11 +68,28 @@ export interface ProfileFormData {
   displayName: string;
   bio: string;
   hobbies: string[];
-  visibilityLevel: VisibilityLevel;
+  photos?: string[]; // Array of photo URLs
+  useLocation: boolean;
   matchRadius?: number;
+  country?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  
+  // Optional profile information
+  age?: number;
+  job?: string;
+  company?: string;
+  education?: string;
+  university?: string;
+  relationshipStatus?: string;
+  lookingFor?: string;
+  interests?: string;
+  languages?: string;
+  height?: number;
+  lifestyle?: string;
 }
 
-export type VisibilityLevel = 'precise' | 'neighborhood' | 'hidden';
 
 // API Response types
 export interface ApiResponse<T> {
@@ -94,7 +135,25 @@ export interface RegisterRequest {
   displayName: string;
   bio?: string;
   hobbies?: string[];
-  visibilityLevel?: VisibilityLevel;
+  country: string;
+  city: string;
+  // Location coordinates (either from GPS or geocoding)
+  latitude?: number;
+  longitude?: number;
+  useLocation?: boolean; // true if using GPS, false if manual selection
+  
+  // Optional profile information
+  age?: number;
+  job?: string;
+  company?: string;
+  education?: string;
+  university?: string;
+  relationshipStatus?: string;
+  lookingFor?: string;
+  interests?: string;
+  languages?: string;
+  height?: number;
+  lifestyle?: string;
 }
 
 export interface AuthResponse {

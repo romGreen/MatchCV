@@ -28,16 +28,28 @@ model Profile {
   userId          String         @unique
   displayName     String
   bio             String
-  avatarUrl       String?
-  visibilityLevel VisibilityLevel @default(NEIGHBORHOOD)
-  lastActive      DateTime       @default(now())
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  // Location (stored as approximate for privacy)
+  // Location (required for matching)
   latitude  Float?
   longitude Float?
-  accuracy  Int? // in meters
+  country   String // Required - user's country
+  city      String // Required - user's city
+  useLocation Boolean @default(true) // Whether user prefers GPS or manual location
+  
+  // Optional profile information for better matching
+  age             Int?           // User's age
+  job             String?        // Job title/profession
+  company         String?        // Company name
+  education       String?        // Education level/degree
+  university      String?        // University name
+  relationshipStatus String?     // Single, In a relationship, etc.
+  lookingFor      String?        // What they're looking for
+  interests       String?        // Additional interests beyond hobbies
+  languages       String?        // Languages spoken
+  height          Int?           // Height in cm
+  lifestyle       String?        // Lifestyle preferences
   
   // Match preferences
   matchRadius Int? @default(10) // in kilometers
@@ -45,6 +57,7 @@ model Profile {
   // Relations
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   hobbies   UserHobby[]
+  photos    UserPhoto[]
   matches   Match[]    @relation("ProfileMatches")
   matches2  Match[]    @relation("ProfileMatches2")
   messages  Message[]
@@ -75,6 +88,20 @@ model UserHobby {
 
   @@unique([userId, hobbyId])
   @@map("user_hobbies")
+}
+
+model UserPhoto {
+  id        String   @id @default(cuid())
+  userId    String
+  photoUrl  String
+  order     Int      @default(0) // Order of photos (0 = first/main photo)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_photos")
 }
 
 model Match {
@@ -124,8 +151,3 @@ model Message {
   @@map("messages")
 }
 
-enum VisibilityLevel {
-  PRECISE
-  NEIGHBORHOOD
-  HIDDEN
-}

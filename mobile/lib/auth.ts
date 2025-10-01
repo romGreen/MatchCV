@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LoginRequest, RegisterRequest, AuthResponse, AuthUser } from '@matchcv/shared';
+import { locationService } from './location';
 
 const API_BASE_URL = 'http://192.168.7.20:3001/api';
 const TOKEN_KEY = 'auth_token';
@@ -119,9 +120,10 @@ class AuthService {
    * Get current user
    */
   async getCurrentUser(forceRefresh: boolean = false): Promise<AuthUser | null> {
-    console.log('AuthService - getCurrentUser called, currentUser:', this.currentUser ? 'exists' : 'null');
+    // Always fetch fresh data from server to ensure photos are up to date
     if (this.currentUser && !forceRefresh) {
-      console.log('AuthService - Returning cached user');
+      // Still return cached data for performance, but also fetch fresh data in background
+      this.refreshUserData();
       return this.currentUser;
     }
 
@@ -138,7 +140,10 @@ class AuthService {
 
       const result = await response.json();
 
+
       if (result.success && result.user) {
+        console.log('getCurrentUser - received user data:', result.user);
+        console.log('getCurrentUser - user photos:', result.user.profile?.photos);
         this.currentUser = result.user;
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(result.user));
         return result.user;
@@ -178,13 +183,59 @@ class AuthService {
       AsyncStorage.setItem(TOKEN_KEY, token),
       AsyncStorage.setItem(USER_KEY, JSON.stringify(user))
     ]);
+
+    // Auto-update location if user has location enabled
+    if (user.profile?.useLocation === true) {
+      this.updateLocationOnLogin();
+    }
+  }
+
+  /**
+   * Update location automatically on login
+   */
+  private async updateLocationOnLogin(): Promise<void> {
+    try {
+        const locationData = await locationService.getCurrentLocationWithCity();
+        
+        if (locationData && this.currentUser?.profile) {
+        
+        // Update profile with new location
+        const profileData = {
+          displayName: this.currentUser.profile.displayName,
+          bio: this.currentUser.profile.bio,
+          hobbies: this.currentUser.profile.hobbies.map(h => h.name),
+          useLocation: true,
+          country: locationData.country,
+          city: locationData.city,
+          matchRadius: this.currentUser.profile.matchRadius || 10,
+          latitude: locationData.location.latitude,
+          longitude: locationData.location.longitude,
+        };
+
+        const response = await fetch(`${API_BASE_URL}/profile`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.token}`
+          },
+          body: JSON.stringify(profileData)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          // Update the current user with new location
+          this.currentUser = result.data;
+        }
+      }
+    } catch (error) {
+      // Silent fail for location auto-update
+    }
   }
 
   /**
    * Clear auth data
    */
   private async clearAuthData(): Promise<void> {
-    console.log('AuthService - Clearing auth data...');
     this.currentUser = null;
     this.token = null;
 
@@ -192,7 +243,29 @@ class AuthService {
       AsyncStorage.removeItem(TOKEN_KEY),
       AsyncStorage.removeItem(USER_KEY)
     ]);
-    console.log('AuthService - Auth data cleared');
+  }
+
+  /**
+   * Refresh user data in background
+   */
+  private async refreshUserData(): Promise<void> {
+    try {
+      if (!this.token) return;
+
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`,
+        },
+      });
+
+      const result = await response.json();
+      if (result.success && result.user) {
+        this.currentUser = result.user;
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(result.user));
+      }
+    } catch (error) {
+      console.error('Background refresh error:', error);
+    }
   }
 
   /**
