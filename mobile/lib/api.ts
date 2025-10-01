@@ -22,64 +22,6 @@ const MOCK_HOBBIES: HobbyTag[] = [
   { id: 'cmfsfzb0l000b9hu4mi7lb7b1', name: 'Painting', category: 'Arts' },
 ];
 
-const MOCK_USERS: UserProfile[] = [
-  {
-    id: '1',
-    displayName: 'Alex Chen',
-    bio: 'Love basketball and photography. Always up for a game!',
-    avatarUrl: 'https://i.pravatar.cc/150?img=1',
-    hobbies: [MOCK_HOBBIES[0], MOCK_HOBBIES[1], MOCK_HOBBIES[2]],
-    location: { latitude: 31.9300, longitude: 34.7990 }, // Nes Ziona area
-    visibilityLevel: 'neighborhood',
-    createdAt: new Date('2024-01-15'),
-    updatedAt: new Date('2024-01-20'),
-  },
-  {
-    id: '2',
-    displayName: 'Sarah Johnson',
-    bio: 'Motorcycle enthusiast and weekend chef. Let\'s ride and eat!',
-    avatarUrl: 'https://i.pravatar.cc/150?img=2',
-    hobbies: [MOCK_HOBBIES[3], MOCK_HOBBIES[2], MOCK_HOBBIES[4]],
-    location: { latitude: 31.9285, longitude: 34.7975 }, // Nes Ziona area
-    visibilityLevel: 'precise',
-    createdAt: new Date('2024-01-10'),
-    updatedAt: new Date('2024-01-18'),
-  },
-  {
-    id: '3',
-    displayName: 'Mike Rodriguez',
-    bio: 'Gamer by night, hiker by day. Looking for adventure buddies!',
-    avatarUrl: 'https://i.pravatar.cc/150?img=3',
-    hobbies: [MOCK_HOBBIES[5], MOCK_HOBBIES[4], MOCK_HOBBIES[6]],
-    location: { latitude: 31.9310, longitude: 34.8000 }, // Nes Ziona area
-    visibilityLevel: 'neighborhood',
-    createdAt: new Date('2024-01-12'),
-    updatedAt: new Date('2024-01-19'),
-  },
-  {
-    id: '4',
-    displayName: 'Emma Wilson',
-    bio: 'Yoga instructor and book lover. Seeking mindful connections.',
-    avatarUrl: 'https://i.pravatar.cc/150?img=4',
-    hobbies: [MOCK_HOBBIES[7], MOCK_HOBBIES[6], MOCK_HOBBIES[8]],
-    location: { latitude: 31.9270, longitude: 34.7960 }, // Nes Ziona area
-    visibilityLevel: 'precise',
-    createdAt: new Date('2024-01-08'),
-    updatedAt: new Date('2024-01-17'),
-  },
-  {
-    id: '5',
-    displayName: 'David Kim',
-    bio: 'Musician and cyclist. Always looking for jam sessions and bike rides.',
-    avatarUrl: 'https://i.pravatar.cc/150?img=5',
-    hobbies: [MOCK_HOBBIES[9], MOCK_HOBBIES[10], MOCK_HOBBIES[11]],
-    location: { latitude: 31.9325, longitude: 34.8015 }, // Nes Ziona area
-    visibilityLevel: 'neighborhood',
-    createdAt: new Date('2024-01-14'),
-    updatedAt: new Date('2024-01-21'),
-  },
-];
-
 class ApiService {
   private static instance: ApiService;
   
@@ -212,44 +154,13 @@ class ApiService {
   /**
    * Delete current user's account
    */
-  async updateLocation(latitude: number, longitude: number): Promise<ApiResponse<string>> {
-    try {
-      const response = await authService.authenticatedRequest(`${API_BASE_URL}/profile/location`, {
-        method: 'POST',
-        body: JSON.stringify({ latitude, longitude }),
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        return {
-          success: true,
-          data: result.message
-        };
-      } else {
-        return {
-          success: false,
-          error: result.error || 'Failed to update location'
-        };
-      }
-    } catch (error: any) {
-      console.error('Error updating location:', error);
-      return {
-        success: false,
-        error: error.message || 'Failed to update location'
-      };
-    }
-  }
 
   async deleteMyAccount(): Promise<ApiResponse<string>> {
     try {
-      console.log('Mobile API - Sending delete account request');
       const response = await authService.authenticatedRequest(`${API_BASE_URL}/users/me`, {
         method: 'DELETE'
       });
-      console.log('Mobile API - Response status:', response.status);
       const result = await response.json();
-      console.log('Mobile API - Response result:', result);
       
       if (result.success) {
         return {
@@ -257,7 +168,6 @@ class ApiService {
           data: result.message
         };
       } else {
-        console.log('Mobile API - Delete failed:', result.error);
         return {
           success: false,
           error: result.error || 'Failed to delete account'
@@ -272,53 +182,282 @@ class ApiService {
     }
   }
 
+
+  /**
+   * Upload profile photo
+   */
+  async uploadPhoto(imageUri: string): Promise<ApiResponse<{ photoUrl: string; photoId: string }>> {
+    try {
+      const formData = new FormData();
+      formData.append('photo', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'photo.jpg',
+      } as any);
+
+      const token = authService.getToken();
+      const response = await fetch(`${API_BASE_URL}/profile/photo`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to upload photo'
+        };
+      }
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to upload photo'
+      };
+    }
+  }
+
+  /**
+   * Delete profile photo
+   */
+  async deletePhoto(photoId: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/profile/photo/${photoId}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to delete photo'
+        };
+      }
+    } catch (error: any) {
+      console.error('Error deleting photo:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to delete photo'
+      };
+    }
+  }
+
+  /**
+   * Update photo order
+   */
+  async updatePhotoOrder(photoOrders: { photoId: string; order: number }[]): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/profile/photo/order`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ photoOrders })
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to update photo order'
+        };
+      }
+    } catch (error: any) {
+      console.error('Error updating photo order:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to update photo order'
+      };
+    }
+  }
+
   /**
    * Get nearby users with match scores
    */
   async getNearbyUsers(currentUser: UserProfile, radiusKm: number = 10): Promise<ApiResponse<NearbyUsersResponse>> {
-    await this.delay(800);
-    
-    if (!currentUser.location) {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/discovery/nearby?radius=${radiusKm}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          data: result.data,
+          success: true,
+        };
+      } else {
+        throw new Error(result.error || 'Failed to fetch nearby users');
+      }
+    } catch (error) {
+      console.error('Error fetching nearby users:', error);
+      // Fallback to mock data if backend is not available
+      await this.delay(800);
+      
+      if (!currentUser.location) {
+        return {
+          data: { users: [], total: 0 },
+          success: false,
+          message: 'User location not available',
+        };
+      }
+
       return {
-        data: { users: [], total: 0 },
+        data: {
+          users: [],
+          total: 0,
+        },
         success: false,
-        message: 'User location not available',
+        message: 'No mock data available',
       };
     }
-
-    const nearbyUsers: NearbyUser[] = MOCK_USERS
-      .filter(user => user.id !== currentUser.id && user.visibilityLevel !== 'hidden')
-      .map(user => {
-        const matchScore = this.calculateMatchScore(currentUser, user);
-        return {
-          profile: user,
-          matchScore,
-        };
-      })
-      .filter(user => user.matchScore.distance <= radiusKm)
-      .sort((a, b) => b.matchScore.score - a.matchScore.score);
-
-    return {
-      data: {
-        users: nearbyUsers,
-        total: nearbyUsers.length,
-      },
-      success: true,
-    };
   }
 
   /**
    * Get user profile by ID
    */
   async getUserProfile(userId: string): Promise<ApiResponse<UserProfile | null>> {
-    await this.delay(300);
-    
-    const user = MOCK_USERS.find(u => u.id === userId);
-    return {
-      data: user || null,
-      success: !!user,
-      message: user ? undefined : 'User not found',
-    };
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/profile/${userId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        // Convert database profile to UserProfile format
+        const user: UserProfile = {
+          id: result.data.id,
+          displayName: result.data.displayName,
+          bio: result.data.bio,
+          photos: result.data.photos?.map((photo: any) => ({
+            id: photo.id,
+            photoUrl: photo.photoUrl,
+            order: photo.order,
+            createdAt: new Date(photo.createdAt),
+            updatedAt: new Date(photo.updatedAt)
+          })) || [],
+          hobbies: result.data.hobbies.map((hobby: any) => ({
+            id: hobby.id,
+            name: hobby.name,
+            category: hobby.category
+          })),
+          location: {
+            latitude: result.data.location?.latitude || 0,
+            longitude: result.data.location?.longitude || 0
+          },
+          city: result.data.city,
+          country: result.data.country,
+          useLocation: result.data.useLocation ?? true,
+          matchRadius: result.data.matchRadius,
+          // Optional profile information
+          age: result.data.age,
+          job: result.data.job,
+          company: result.data.company,
+          education: result.data.education,
+          university: result.data.university,
+          relationshipStatus: result.data.relationshipStatus,
+          lookingFor: result.data.lookingFor,
+          interests: result.data.interests,
+          languages: result.data.languages,
+          height: result.data.height,
+          lifestyle: result.data.lifestyle,
+          createdAt: new Date(result.data.createdAt),
+          updatedAt: new Date(result.data.updatedAt),
+        };
+
+        return {
+          data: user,
+          success: true,
+        };
+      } else {
+        return {
+          data: null,
+          success: false,
+          message: result.error || 'User not found',
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      return {
+        data: null,
+        success: false,
+        message: 'User not found',
+      };
+    }
+  }
+
+  /**
+   * Get match score between current user and target profile
+   */
+  async getMatchScore(profileId: string): Promise<ApiResponse<{ score: number; sharedHobbies: any[]; distance: number }>> {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/profile/${profileId}/match-score`);
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to calculate match score',
+        };
+      }
+    } catch (error) {
+      console.error('Error calculating match score:', error);
+      return {
+        success: false,
+        error: 'Failed to calculate match score',
+      };
+    }
+  }
+
+  /**
+   * Mark chat messages as read
+   */
+  async markChatAsRead(chatId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/messages/${chatId}/read`, {
+        method: 'POST',
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          success: true,
+          data: result.data
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Failed to mark chat as read',
+        };
+      }
+    } catch (error) {
+      console.error('Error marking chat as read:', error);
+      return {
+        success: false,
+        error: 'Failed to mark chat as read',
+      };
+    }
   }
 
   /**
@@ -332,17 +471,35 @@ class ApiService {
         ?.filter(hobby => profileData.hobbies.includes(hobby.name))
         .map(hobby => hobby.id) || [];
 
-      console.log('Saving profile with hobby names:', profileData.hobbies);
-      console.log('Converted to hobby IDs:', hobbyIds);
+
+      const requestBody = {
+        displayName: profileData.displayName,
+        bio: profileData.bio,
+        hobbies: hobbyIds,
+        useLocation: profileData.useLocation,
+        country: profileData.country,
+        city: profileData.city,
+        matchRadius: profileData.matchRadius,
+        latitude: profileData.latitude,
+        longitude: profileData.longitude,
+        // Optional profile information
+        age: profileData.age,
+        job: profileData.job,
+        company: profileData.company,
+        education: profileData.education,
+        university: profileData.university,
+        relationshipStatus: profileData.relationshipStatus,
+        lookingFor: profileData.lookingFor,
+        interests: profileData.interests,
+        languages: profileData.languages,
+        height: profileData.height,
+        lifestyle: profileData.lifestyle,
+      };
+
 
       const response = await authService.authenticatedRequest(`${API_BASE_URL}/profile`, {
         method: 'POST',
-        body: JSON.stringify({
-          displayName: profileData.displayName,
-          bio: profileData.bio,
-          hobbies: hobbyIds,
-          visibilityLevel: profileData.visibilityLevel,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
@@ -353,10 +510,9 @@ class ApiService {
           id: result.data.id,
           displayName: result.data.displayName,
           bio: result.data.bio,
-          avatarUrl: result.data.avatarUrl,
           hobbies: result.data.hobbies,
           location: { latitude: 0, longitude: 0 }, // Default location
-          visibilityLevel: result.data.visibilityLevel,
+          useLocation: result.data.useLocation ?? true,
           createdAt: new Date(result.data.createdAt),
           updatedAt: new Date(result.data.updatedAt),
         };
@@ -373,48 +529,131 @@ class ApiService {
       // Fallback to mock data if backend fails
       await this.delay(600);
       
-      const hobbies = MOCK_HOBBIES.filter(hobby => 
-        profileData.hobbies.includes(hobby.name)
-      );
-      
-      const now = new Date();
-      const user: UserProfile = {
-        id: userId || `user_${Date.now()}`,
-        displayName: profileData.displayName,
-        bio: profileData.bio,
-        avatarUrl: undefined,
-        hobbies,
-        location: { latitude: 0, longitude: 0 },
-        visibilityLevel: profileData.visibilityLevel,
-        createdAt: userId ? MOCK_USERS.find(u => u.id === userId)?.createdAt || now : now,
-        updatedAt: now,
-      };
-
       return {
-        data: user,
-        success: true,
+        data: undefined,
+        success: false,
+        error: 'Backend not available',
       };
     }
   }
 
   /**
-   * Send a "Say hi" message (stub for WhatsApp deep link)
+   * Send a "Say hi" message and start a chat
    */
-  async sendSayHiMessage(toUserId: string, fromUserId: string): Promise<ApiResponse<boolean>> {
-    await this.delay(400);
-    
-    // In a real app, this would:
-    // 1. Create a chat room
-    // 2. Send a notification
-    // 3. Return a WhatsApp deep link or in-app chat URL
-    
-    console.log(`Sending "Say hi" from ${fromUserId} to ${toUserId}`);
-    
-    return {
-      data: true,
-      success: true,
-      message: 'Message sent successfully',
-    };
+  async sendSayHiMessage(toUserId: string, fromUserId: string): Promise<ApiResponse<{ chatId: string }>> {
+    try {
+      
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/messages/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          receiverId: toUserId,
+          content: "Hi! I saw we have some hobbies in common. Would you like to chat?"
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          data: { chatId: result.data.chatId },
+          success: true,
+          message: 'Message sent successfully',
+        };
+      } else {
+        throw new Error(result.error || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send message',
+      };
+    }
+  }
+
+  /**
+   * Get user's messages/chats
+   */
+  async getUserMessages(): Promise<ApiResponse<any[]>> {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/messages`);
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          data: result.data,
+          success: true,
+        };
+      } else {
+        throw new Error(result.error || 'Failed to fetch messages');
+      }
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch messages',
+      };
+    }
+  }
+
+  /**
+   * Get messages for a specific chat
+   */
+  async getChatMessages(chatId: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/messages/${chatId}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          data: result.data,
+          success: true,
+        };
+      } else {
+        throw new Error(result.error || 'Failed to fetch chat messages');
+      }
+    } catch (error) {
+      console.error('Error fetching chat messages:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch chat messages',
+      };
+    }
+  }
+
+  /**
+   * Send a message to an existing chat
+   */
+  async sendChatMessage(chatId: string, content: string): Promise<ApiResponse<{ messageId: string }>> {
+    try {
+      const response = await authService.authenticatedRequest(`${API_BASE_URL}/messages/${chatId}/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        return {
+          data: { messageId: result.data.messageId },
+          success: true,
+        };
+      } else {
+        throw new Error(result.error || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Error sending chat message:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send message',
+      };
+    }
   }
 }
 

@@ -1,47 +1,14 @@
 import { Router } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
+import { authenticateToken } from '../middleware/auth';
+import { AuthController } from '../controllers/authController';
 
 const router = Router();
+const authController = new AuthController();
 
-// Placeholder auth routes - will be implemented with Prisma
-router.post('/register', asyncHandler(async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      message: 'Authentication endpoints not yet implemented',
-      code: 'NOT_IMPLEMENTED'
-    }
-  });
-}));
-
-router.post('/login', asyncHandler(async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      message: 'Authentication endpoints not yet implemented',
-      code: 'NOT_IMPLEMENTED'
-    }
-  });
-}));
-
-router.post('/logout', asyncHandler(async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      message: 'Authentication endpoints not yet implemented',
-      code: 'NOT_IMPLEMENTED'
-    }
-  });
-}));
-
-router.get('/me', asyncHandler(async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: {
-      message: 'Authentication endpoints not yet implemented',
-      code: 'NOT_IMPLEMENTED'
-    }
-  });
-}));
+// Auth routes using controllers
+router.post('/register', (req, res) => authController.register(req, res));
+router.post('/login', (req, res) => authController.login(req, res));
+router.get('/me', authenticateToken, (req, res) => authController.getCurrentUser(req, res));
+router.post('/logout', authenticateToken, (req, res) => authController.logout(req, res));
 
 export { router as authRoutes };

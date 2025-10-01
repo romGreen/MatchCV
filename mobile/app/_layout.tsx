@@ -46,6 +46,12 @@ export default function RootLayout() {
               }} 
             />
             <Stack.Screen 
+              name="(tabs)" 
+              options={{ 
+                headerShown: false 
+              }} 
+            />
+            <Stack.Screen 
               name="auth/login" 
               options={{ 
                 title: 'Sign In',
@@ -67,13 +73,6 @@ export default function RootLayout() {
               }} 
             />
             <Stack.Screen 
-              name="discover/index" 
-              options={{ 
-                title: 'Discover',
-                headerShown: false
-              }} 
-            />
-            <Stack.Screen 
               name="profile/[id]" 
               options={{ 
                 title: 'Profile',
@@ -81,10 +80,10 @@ export default function RootLayout() {
               }} 
             />
             <Stack.Screen 
-              name="settings/index" 
+              name="chat/[chatId]" 
               options={{ 
-                title: 'Settings',
-                headerShown: true
+                title: 'Chat',
+                headerShown: false
               }} 
             />
             <Stack.Screen 

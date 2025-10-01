@@ -17,44 +17,37 @@ declare global {
  * Authentication middleware
  * Verifies JWT token and adds user to request
  */
-export async function authenticateToken(req: Request, res: Response, next: NextFunction) {
+export async function authenticateToken(req: Request, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
-  console.log('Auth middleware - Token received:', token ? 'Yes' : 'No');
-  console.log('Auth middleware - Auth header:', authHeader);
-
   if (!token) {
-    return res.status(401).json({ 
+    res.status(401).json({ 
       success: false, 
       error: 'Access token required' 
     });
+    return;
   }
 
   try {
     const decoded = verifyToken(token);
-    console.log('Auth middleware - Token decoded:', decoded);
     if (!decoded) {
-      return res.status(403).json({ 
+      res.status(403).json({ 
         success: false, 
         error: 'Invalid or expired token' 
       });
+      return;
     }
 
     // Get user from database to ensure they still exist
-    console.log('Auth middleware - Looking for user with ID:', decoded.userId);
     const user = await getUserById(decoded.userId);
-    console.log('Auth middleware - User found:', user ? 'Yes' : 'No');
-    if (user) {
-      console.log('Auth middleware - User email:', user.email);
-    }
     
     if (!user) {
-      console.log('Auth middleware - User not found, returning 403');
-      return res.status(403).json({ 
+      res.status(403).json({ 
         success: false, 
         error: 'User not found' 
       });
+      return;
     }
 
     // Add user to request object
@@ -63,14 +56,13 @@ export async function authenticateToken(req: Request, res: Response, next: NextF
       email: user.email
     };
 
-    console.log('Auth middleware - Calling next() to proceed to endpoint');
     next();
   } catch (error) {
-    console.error('Auth middleware - Error:', error);
-    return res.status(403).json({ 
+    res.status(403).json({ 
       success: false, 
       error: 'Invalid token' 
     });
+    return;
   }
 }
 

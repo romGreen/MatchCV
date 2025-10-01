@@ -15,7 +15,7 @@ export const profileSchema = z.object({
     .array(z.string())
     .min(1, 'Select at least one hobby')
     .max(10, 'Select at most 10 hobbies'),
-  visibility: z.enum(['precise', 'neighborhood', 'hidden']),
+  useLocation: z.boolean(),
 });
 
 // Hobby validation
